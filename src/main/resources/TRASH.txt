@@ -1,0 +1,303 @@
+//    public List<Token> getCreatedPair() {
+//        ExplorerPairCreated explorerPairCreated = etherscanUniswapV2Dao.callLastCreatedPairsUrl();
+//        List<Token> tokens = new ArrayList<>();
+//
+//        for (ExplorerPairCreated.ExplorerResult result : explorerPairCreated.getResult()) {
+//            String tokenAddress = dataExtractor.extractTokenAddressFromPair(result);
+//            String pairAddress = dataExtractor.extractPairAddress(result);
+//            List<String> addressFromPair = dataExtractor.extractAddressFromPair(result);
+//
+//            ExplorerPairMinted explorerPairMinted = etherscanUniswapV2Dao.callMintedPairUrl(pairAddress);
+//            List<String> values = dataExtractor.extractValuesFromMintedPair(explorerPairMinted.getResult()[0]);
+//
+//            ExplorerTokenInfo explorerTokenInfo = etherscanUniswapV2Dao.callTokenInfoUrl(tokenAddress);
+//            ExplorerTokenInfo.ExplorerResult tokenInfo = dataExtractor.extractTokenInfo(explorerTokenInfo.getResult()[0]);
+//
+//            tokens.add(Token.TokenBuilder.builder()
+//                    .address(tokenAddress)
+//                    .tokenName(tokenInfo.getTokenName())
+//                    .tokenSymbol(tokenInfo.getTokenSymbol())
+//                    .totalSupply(tokenInfo.getValue())
+//                    .tokenDecimal(tokenInfo.getTokenDecimal())
+//                    .liquidityPair(
+//                            new Pair(pairAddress,
+//                                    addressFromPair.get(0),
+//                                    values.get(0),
+//                                    addressFromPair.get(1),
+//                                    values.get(1)
+//                            )
+//                    )
+//                    .build());
+//        }
+//
+//        return tokens;
+//    }
+
+my own runnable
+package com.coinspy.telegram;
+
+import com.coinspy.controller.ExplorerController;
+import com.coinspy.telegram.message.MessageFactory;
+import com.coinspy.token.Token;
+import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.List;
+
+public class MyOwnRunnable implements Runnable{
+
+    private final ExplorerController controller;
+    private final TelegramLongPollingBot telegramBot;
+    private final MessageFactory messageFactory;
+    private final String channelId;
+    private final Dex nameDex;
+    private final Method controllerMethod;
+    private final long sleepMiliseconds;
+
+    public MyOwnRunnable(ExplorerController explorerController, TelegramLongPollingBot telegramBot, MessageFactory messageFactory, String channelId, Dex nameDex, Method controllerMethod, long sleepMiliseconds) {
+        this.controller = explorerController;
+        this.telegramBot = telegramBot;
+        this.messageFactory = messageFactory;
+        this.channelId = channelId;
+        this.nameDex = nameDex;
+        this.controllerMethod = controllerMethod;
+        this.sleepMiliseconds = sleepMiliseconds;
+    }
+
+    @Override
+    public void run() {
+        String blockNumber = "latest";
+        while (!Thread.currentThread().isInterrupted()){
+            var tokens = outerFunction(controller, controllerMethod, blockNumber);
+            if (!tokens.isEmpty()) {
+                postMessagesAtTelegramChannel(tokens, channelId, nameDex);
+                blockNumber = tokens.get(tokens.size() - 1).getBlockNumber();
+                try {
+                    Thread.sleep(sleepMiliseconds);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+    private List<Token> outerFunction(Object object, Method method, String fromBlock) {
+        var parameters = new Object[1];
+        parameters[0] = fromBlock;
+        try {
+            return (List<Token>) method.invoke(object, parameters);
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Cannot execute method");
+        }
+    }
+
+    private void postMessagesAtTelegramChannel(List<Token> tokens, String channelId, Dex nameDex){
+        tokens.forEach(token -> {
+            SendMessage message = createMessage(channelId, nameDex, token);
+            try {
+                telegramBot.execute(message);
+            } catch (TelegramApiException e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
+    private SendMessage createMessage(String channelId, Dex nameDex, Token token){
+        return messageFactory
+                .getMessage(nameDex, token)
+                .parseToSendMessage(channelId);
+    }
+}
+
+
+//        return new StringBuilder()
+//                .append("New coin at Uniswap! \n")
+//                .append(String.format("Name: %s  |  Ticket: %s \n",
+//                        token.getTokenName(), token.getTokenSymbol()))
+//                .append(String.format("Total supply: %s\n", token.getTotalSupply()))
+//
+//                .append("\uD83D\uDE02 Basic social media: \n")
+//                .append(String.format("Twitter: %s  |  %s\n",
+//                        twitterSearchUrl + token.getTokenName(),
+//                        twitterSearchUrl + '$' + token.getTokenSymbol()))
+//                .append(String.format("Reddit: %s  |  %s\n",
+//                        redditSearchUrl + token.getTokenName(),
+//                        redditSearchUrl + '$' + token.getTokenSymbol()))
+//                .append(String.format("4chan: %s  |  %s\n",
+//                        fourChanSearchUrl + token.getTokenName(),
+//                        fourChanSearchUrl + token.getTokenSymbol()))
+//
+//                .append("<b>Liquidity pool:</b>  \n")
+//
+//                .append(String.format("%s $%s \n",
+//                        token.getLiquidityPair().getValue1(),
+//                        token.getLiquidityPair().getTokenSymbol1()))
+//                .append(String.format("%s $%s \n",
+//                        token.getLiquidityPair().getValue2(),
+//                        token.getLiquidityPair().getTokenSymbol2()))
+//
+//                .append("Charts: \n")
+//                .append(String.format("Dextools: %s \n",
+//                        dextoolsUrl + token.getLiquidityPair().getPairAddress()))
+//
+//                .append("DEX: \n")
+//                .append(String.format("Buy: %s \n",
+//                        uniswapSwapBuyUrl + token.getAddress()))
+//                .append(String.format("Sell: %s \n",
+//                        uniswapSwapSellUrl + token.getAddress()))
+//                .append(String.format("Info: %s \n",
+//                        uniswapInfoUrl + token.getAddress()))
+//
+//                .append("Explorer: \n")
+//                .append(String.format("Etherscan token contract: %s \n",
+//                        String.format(etherscanContractCodeUrl, token.getAddress())
+//                ))
+//                .append(String.format("Etherscan token hodlers: %s \n",
+//                        String.format(etherscanBalancesUrl, token.getAddress())
+//                ))
+//
+//                .append("Premium tools: \n")
+//                .append("Is liquidity locked? \n")
+//                .append("Is smart contract secure? \n")
+//                .append("Did they have a popular sale? \n")
+//                .append("Is exist at exotic sites? \n")
+//                .toString();
+
+
+//                .addTextNewLine(String.format("Twitter: %s  |  %s",
+//                        twitterSearchUrl + token.getTokenName(),
+//                        twitterSearchUrl + '$' + token.getTokenSymbol()))
+//                .addTextNewLine(String.format("Reddit: %s  |  %s\n",
+//                        redditSearchUrl + token.getTokenName(),
+//                        redditSearchUrl + '$' + token.getTokenSymbol()))
+//                .addTextNewLine(String.format("4chan: %s  |  %s\n",
+//                        fourChanSearchUrl + token.getTokenName(),
+//                        fourChanSearchUrl + token.getTokenSymbol()))
+
+.textLine(MessageCreator.Emoji.FIRE + " <b>New coin at Uniswap!</b> " + MessageCreator.Emoji.FIRE)
+
+
+                .sector(MessageCreator.Sector.BASIC_SOCIAL_MEDIA)
+                .text("Twitter: ").link("NAME", twitterSearchUrl + token.getTokenName())
+                .text(" | ").link("TICKET", twitterSearchUrl + '$' + token.getTokenName())
+                .newLine()
+                .text("Reddit: ").link("NAME", redditSearchUrl + token.getTokenName())
+                .text(" | ").link("TICKET", redditSearchUrl + '$' + token.getTokenName())
+                .newLine()
+                .text("4chan: ").link("NAME", fourChanSearchUrl + token.getTokenName())
+                .text(" | ").link("TICKET", fourChanSearchUrl + '$' + token.getTokenName())
+                .newLine()
+
+                .sector(MessageCreator.Sector.LIQUIDITY_POOL)
+                .textLine(String.format("%s $%s",
+                        token.getLiquidityPair().getValue1(),
+                        token.getLiquidityPair().getTokenSymbol1()))
+                .textLine(String.format("%s $%s",
+                        token.getLiquidityPair().getValue2(),
+                        token.getLiquidityPair().getTokenSymbol2()))
+
+                .sector(MessageCreator.Sector.CHARTS)
+                .text("Dextools: ").link("LINK", dextoolsUniswapUrl + token.getLiquidityPair().getPairAddress())
+                .newLine()
+                .text("DexGuru: ").link("LINK", dexGuruUrl + token.getAddress() + "-eth")
+                .newLine()
+
+                .sector(MessageCreator.Sector.DEX)
+                .text("Buy: ").link("LINK", uniswapBuyUrl + token.getAddress())
+                .newLine()
+                .text("Sell: ").link("LINK", uniswapSellUrl + token.getAddress())
+                .newLine()
+                .text("Info: ").link("LINK", uniswapInfoUrl + token.getLiquidityPair().getPairAddress())
+                .newLine()
+
+                .sector(MessageCreator.Sector.EXPLORER)
+                .text("Etherscan token contract: ").link("LINK", String.format(etherscanContractCodeUrl, token.getAddress()))
+                .newLine()
+                .text("Etherscan token hodlers: ").link("LINK", String.format(etherscanBalancesUrl, token.getAddress()))
+                .newLine()
+
+                .sector(MessageCreator.Sector.PREMIUM_TOOLS)
+                .textLine("Soon")
+                .textLine("Is liquidity locked?")
+                .textLine("Is listed at popular websites?")
+                .textLine("Is smart contract secure?")
+                .textLine("Is balance inside hodlers?")
+                .textLine("Wanna add notification on liquidity")
+                .build();
+
+
+
+
+if(update.getMessage().getText().equals("/runUniSwapV2")) {
+                var thread = new Thread(() -> {
+                    var blockNumber = "12887330";
+                    while (!Thread.currentThread().isInterrupted()){
+                        var tokens = controller.getEtherscanUniswapNewPairsV2(blockNumber);
+                        botExecuteTask(messageFactory, this, tokens, channelEthereumId, Dex.UniSwapV2);
+                        blockNumber = getLastBlockNumber(tokens, blockNumber);
+                        sleepThread(3000);
+                    }
+                });
+                thread.start();
+                logger.info("Started uniswapV2");
+            }
+
+            if(update.getMessage().getText().equals("/runUniSwapV3")) {
+                var thread = new Thread(() -> {
+                    var blockNumber = "latest";
+                    while (!Thread.currentThread().isInterrupted()){
+                        var tokens = controller.getEtherscanUniswapNewPairsV3(blockNumber);
+                        botExecuteTask(messageFactory, this, tokens, channelEthereumId, Dex.UniSwapV3);
+                        blockNumber = getLastBlockNumber(tokens, blockNumber);
+                        sleepThread(3000);
+                    }
+                });
+                thread.start();
+                logger.info("Started uniswapV3");
+            }
+
+            if(update.getMessage().getText().equals("/runSushiSwapV2")) {
+                var thread = new Thread(() -> {
+                    var blockNumber = "latest";
+                    while (!Thread.currentThread().isInterrupted()){
+                        var tokens = controller.getEtherscanSushiswapNewPairsV2(blockNumber);
+                        botExecuteTask(messageFactory, this, tokens, channelEthereumId, Dex.SushiSwapV2);
+                        blockNumber = getLastBlockNumber(tokens, blockNumber);
+                        sleepThread(5000);
+                    }
+                });
+                thread.start();
+                logger.info("Started sushiswapV2");
+            }
+
+            if(update.getMessage().getText().equals("/runPancakeSwapV2")) {
+                var thread = new Thread(() -> {
+                    var blockNumber = "latest";
+                    while (!Thread.currentThread().isInterrupted()){
+                        var tokens = controller.getBscscanPancakeswapNewPairsV2(blockNumber);
+                        botExecuteTask(messageFactory, this, tokens, channelBscId, Dex.PancakeSwapV2);
+                        blockNumber = getLastBlockNumber(tokens, blockNumber);
+                        sleepThread(2000);
+                    }
+                });
+                thread.start();
+                logger.info("Started pancakeswapV2");
+            }
+
+            if(update.getMessage().getText().equals("/runQuickSwapV2")) {
+                var thread = new Thread(() -> {
+                    var blockNumber = "17208000"; //17208000
+                    while (!Thread.currentThread().isInterrupted()){
+                        var tokens = controller.getPolygonscanQuickswapNewPairsV2(blockNumber);
+                        botExecuteTask(messageFactory, this, tokens, channelPolygonId, Dex.QuickSwapV2);
+                        blockNumber = getLastBlockNumber(tokens, blockNumber);
+                        sleepThread(2000);
+                    }
+                });
+                thread.start();
+                logger.info("Started quickswapV2");
+            }
