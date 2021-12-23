@@ -43,6 +43,7 @@ abstract class ExplorerService {
             explorerPairCreated = explorer.callLastCreatedPairsUrl(fromBlock);
         }catch (Exception ignore){
             explorerPairCreated = new ExplorerPairCreated();
+            explorerPairCreated.setResult(new ExplorerPairCreated.ExplorerResult[]{});
         }
 
         List<Token> tokens = new ArrayList<>();

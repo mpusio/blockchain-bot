@@ -27,6 +27,13 @@ public class RunnableComponents {
     private List<Message> postMessagesAtTelegramChannel(MessageFactory messageFactory, TrackerBot telegramBot, List<Token> tokens, String channelId, Dex nameDex){
         List<Message> sentMessages = new ArrayList<>();
 
+        //temporary
+        boolean frozen = tokens.stream()
+                .anyMatch(t -> t.getTokenSymbol().equalsIgnoreCase("FROZEN") ||
+                               t.getTokenSymbol().toUpperCase().contains("SHARE"));
+
+        //temporary
+
         tokens.forEach(token -> {
             SendMessage message = createMessage(messageFactory, channelId, nameDex, token);
             message.enableHtml(true);
