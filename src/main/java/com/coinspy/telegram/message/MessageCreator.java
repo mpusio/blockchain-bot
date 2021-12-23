@@ -186,8 +186,6 @@ public class MessageCreator {
         public MessageCreatorBuilder security(){
             this.sector(Sector.SECURITY);
 
-            Type contractType = token.getSecurity().getContractType();
-
             if (token.getSecurity().isVerified()) {
                 int amount = Vulnerability.possibleVulnerability(token.getSecurity().getCompilerVersion());
                 String compilerVersion = Vulnerability.cutVersion(token.getSecurity().getCompilerVersion());
@@ -198,22 +196,13 @@ public class MessageCreator {
                     .textLine("License type: " + token.getSecurity().getLicenseType())
                     .textLine(String.format("Compiler version: %s <b>(%s%s possible vulnerabilities)</b>", compilerVersion, Emoji.WARNING, amount));
 
-                if (contractType.equals(Type.SCAM)) this.textLine("This contract is assign by telegram bot as " + Emoji.RED_CIRCLE + "<b><i> SCAM</i></b>");
-                if (contractType.equals(Type.UNCHECKED)) this.textLine("This contract is assign by telegram bot as " + Emoji.YELLOW_CIRCLE + "<b><i> UNCHECKED</i></b>");
-                if (contractType.equals(Type.TRUSTED)) this.textLine("This contract is assign by telegram bot as " + Emoji.GREEN_CIRCLE + "<b><i> TRUSTED</i></b>");
-
                 return this;
             }
 
             this
                 .textLine("Is contract verified by explorer? : No");
 
-            if (contractType.equals(Type.SCAM)) this.textLine("This contract is assign by telegram bot as " + Emoji.RED_CIRCLE + "<b><i> SCAM</i></b>");
-            if (contractType.equals(Type.UNCHECKED)) this.textLine("This contract is assign by telegram bot as " + Emoji.YELLOW_CIRCLE + "<b><i> UNCHECKED</i></b>");
-            if (contractType.equals(Type.TRUSTED)) this.textLine("This contract is assign by telegram bot as " + Emoji.GREEN_CIRCLE + "<b><i> TRUSTED</i></b>");
-
             return this;
-
         }
 
         public String build() {

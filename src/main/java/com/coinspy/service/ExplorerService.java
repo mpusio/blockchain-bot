@@ -4,9 +4,7 @@ import com.coinspy.dao.ExplorerDaoInterface;
 import com.coinspy.dto.ExplorerContractSourceCode;
 import com.coinspy.dto.ExplorerPairCreated;
 import com.coinspy.dto.ExplorerTokenInfo;
-import com.coinspy.entity.CodeEntity;
 import com.coinspy.entity.Type;
-import com.coinspy.repository.CodeRepository;
 import com.coinspy.token.Pair;
 import com.coinspy.token.Security;
 import com.coinspy.token.Token;
@@ -25,8 +23,6 @@ abstract class ExplorerService {
 
     @Autowired
     private DataExtractor dataExtractor;
-    @Autowired
-    private CodeRepository codeRepository;
 
     private final Logger logger = LoggerFactory.getLogger(ExplorerService.class);
 
@@ -43,7 +39,7 @@ abstract class ExplorerService {
             explorerPairCreated = explorer.callLastCreatedPairsUrl(fromBlock);
         }catch (Exception ignore){
             explorerPairCreated = new ExplorerPairCreated();
-            explorerPairCreated.setResult(new ExplorerPairCreated.ExplorerResult[]{});
+//            explorerPairCreated.setResult(new ExplorerPairCreated.ExplorerResult[]{});
         }
 
         List<Token> tokens = new ArrayList<>();
@@ -56,8 +52,6 @@ abstract class ExplorerService {
 
                 String tokenAddressBalance = explorer
                         .callTokenBalanceInContract(tokenAddress, pairAddress).getResult();
-
-//                if (tokenAddressBalance=="0") continue;
 
                 String tokenLiquidityBaseBalance = explorer
                         .callTokenBalanceInContract(tokenLiquidityBaseAddress, pairAddress).getResult();
@@ -73,9 +67,6 @@ abstract class ExplorerService {
                                 .getResult()[0]);
 
                 ExplorerContractSourceCode.ExplorerResult sourceCode = explorer.callContractSourceCode(tokenAddress).getResult()[0];
-
-                String byteCode = explorer.callContractBytecode(tokenAddress).getResult();
-                Type type = Type.UNCHECKED; //compareWithDiffBytecodes(byteCode);
 
                 String blockNumber = Parser.hexToDec(result.getBlockNumber().replace("0x", ""));
 
@@ -99,7 +90,6 @@ abstract class ExplorerService {
                                 .contractName(sourceCode.getContractName())
                                 .compilerVersion(sourceCode.getCompilerVersion())
                                 .licenseType(sourceCode.getLicenseType())
-                                .contractType(type)
                                 .build())
                         .build());
 
@@ -112,19 +102,5 @@ abstract class ExplorerService {
         return tokens.stream()
                 .sorted(Comparator.comparing(Token::getBlockNumber))
                 .collect(Collectors.toList());
-    }
-
-    private Type compareWithDiffBytecodes(String bytecode){
-        if (codeRepository.findByType(Type.SCAM).stream()
-                .map(CodeEntity::getByteCode)
-                .anyMatch(e -> e.equals(bytecode)))
-            return Type.SCAM;
-
-        if (codeRepository.findByType(Type.TRUSTED).stream()
-                .map(CodeEntity::getByteCode)
-                .anyMatch(e -> e.equals(bytecode)))
-            return Type.TRUSTED;
-
-        return Type.UNCHECKED;
     }
 }
