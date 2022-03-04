@@ -4,7 +4,6 @@ import com.coinspy.dao.ExplorerDaoInterface;
 import com.coinspy.dto.ExplorerContractSourceCode;
 import com.coinspy.dto.ExplorerPairCreated;
 import com.coinspy.dto.ExplorerTokenInfo;
-import com.coinspy.entity.Type;
 import com.coinspy.token.Pair;
 import com.coinspy.token.Security;
 import com.coinspy.token.Token;

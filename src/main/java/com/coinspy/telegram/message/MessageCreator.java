@@ -1,6 +1,5 @@
 package com.coinspy.telegram.message;
 
-import com.coinspy.entity.Type;
 import com.coinspy.telegram.message.vulnerability.Vulnerability;
 import com.coinspy.token.Token;
 import com.coinspy.useful.Calculator;
